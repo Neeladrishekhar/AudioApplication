@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Audio Application</string>
+    <string name="start">Start</string>
+    <string name="stop">STOP</string>
+    <string name="play">PLAY</string>
+    <string name="pause">PAUSE</string>
+    <string name="_1000">1000</string>
+    <string name="_2000">2000</string>
+</resources>
