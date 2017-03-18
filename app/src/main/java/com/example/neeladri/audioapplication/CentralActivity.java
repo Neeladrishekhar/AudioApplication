@@ -94,10 +94,11 @@ public class CentralActivity extends AppCompatActivity {
 
         graph.getViewport().setXAxisBoundsManual(true);
         graph.getViewport().setMinX(0);
-        graph.getViewport().setMaxX(1000);
-        graph.getViewport().setYAxisBoundsManual(true);
-        graph.getViewport().setMinY(-1000);
-        graph.getViewport().setMaxY(1000);
+//        graph.getViewport().setMaxX(1000);
+        graph.getViewport().setMaxX(10);
+//        graph.getViewport().setYAxisBoundsManual(true);
+//        graph.getViewport().setMinY(-1000);
+//        graph.getViewport().setMaxY(1000);
 
         Toast.makeText(getApplicationContext(), String.valueOf(BUFFER_SIZE), Toast.LENGTH_LONG).show();
     }
@@ -119,7 +120,7 @@ public class CentralActivity extends AppCompatActivity {
                         }
                     });
                     try {
-                        Thread.sleep(0,2000);
+                        Thread.sleep(50);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -134,7 +135,7 @@ public class CentralActivity extends AppCompatActivity {
     List<Double> fhr=new ArrayList<>(); // we need this variable globally as it is used by the function again and again
     private int indexPlot = 0;
     private void addDataToGraph() {
-        int graphFrame = 1000;
+//        int graphFrame = 1000;
         /* here we add new data to the graph and show only a max of 10 datapoints to the viewport while scrolling to end */
         /*if (indexPlot >= recordedData.size()) {
             return;
@@ -150,9 +151,25 @@ public class CentralActivity extends AppCompatActivity {
         //////////////////////////////////////////////////////////////////////////////
         //Code translation requirements
         int hop_time_ms = 200;
+        int graphFrame = 10 * 1000 / hop_time_ms;
 
         /* Convert time specifications to samples */
         int HOPSIZE = (int) Math.ceil((SAMPLE_RATE)*(hop_time_ms)*0.001);	// Round HOPSIZE(samples) if HOPSIZE is not an integer
+
+        /*
+        * can be used to test the timing and real time audio processing and stability*/
+//        graphData.appendData(new DataPoint(0.001*(window_time_ms + (hop_time_ms*(indexPlot/HOPSIZE))), Math.sin(indexPlot/HOPSIZE)), true, graphFrame);
+//        indexPlot += HOPSIZE;
+//        return;
+
+
+
+
+
+
+
+
+
         int buff16[] = new int[WINSIZE];			// Defining buffer for holding samples that fall within the window.
 
         char decimate = 10;		//decimation by a factor of 10
@@ -215,7 +232,8 @@ public class CentralActivity extends AppCompatActivity {
             //calculating envelope of signal
 
             //typedef complex<double> cx;
-            int log2n =(int) Math.ceil(Math.log(WINLEN)/Math.log(WINLEN));
+//        int log2n =(int) Math.ceil(Math.log(WINLEN)/Math.log(WINLEN));
+            int log2n =(int) Math.ceil(Math.log(WINLEN)/Math.log(2));
             int n = 1<<log2n;
             ComplexNumber a[] = new ComplexNumber[n];
             ComplexNumber b[] = new ComplexNumber[n];
@@ -231,7 +249,11 @@ public class CentralActivity extends AppCompatActivity {
             hilbert(a,b,c,log2n);
             double env[] = new double[WINLEN];
             for (int i=0; i<WINLEN; i++){
-                env[i] = c[i].mod();
+                if (i >= n) {
+                    env[i] = 0.0;
+                } else {
+                    env[i] = c[i].mod();
+                }
             }
 
             double data[] = new double[WINLEN];
@@ -239,7 +261,7 @@ public class CentralActivity extends AppCompatActivity {
 
             //Filtering envelope using the previously defined FIR LPF
             for(int i=0; i<WINLEN; i++){
-                data[i] = 0;
+                data[i] = 0.0;
 
                 if(i<numtaps){
                     for(int j=i; j>=0 && j<=i; j--){
@@ -255,7 +277,7 @@ public class CentralActivity extends AppCompatActivity {
             }
 
             // Calculating norm
-            double norm = 0;
+            double norm = 0.0;
             for(int i=0; i<WINLEN; i++){
                 norm = norm + data[i]*data[i];
             }
@@ -298,6 +320,14 @@ public class CentralActivity extends AppCompatActivity {
                 // add data to graph
                 graphData.appendData(new DataPoint(indexPlot/HOPSIZE, curr_rate), true, graphFrame);
             }
+
+
+
+
+
+
+
+
             //------printing to file end ---------------------------------
 
 
