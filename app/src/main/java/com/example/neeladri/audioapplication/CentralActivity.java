@@ -249,11 +249,12 @@ public class CentralActivity extends AppCompatActivity {
             hilbert(a,b,c,log2n);
             double env[] = new double[WINLEN];
             for (int i=0; i<WINLEN; i++){
-                if (i >= n) {
-                    env[i] = 0.0;
-                } else {
-                    env[i] = c[i].mod();
-                }
+//                if (i >= n) {
+//                    env[i] = 0.0;
+//                } else {
+//                    env[i] = c[i].mod();
+//                }
+                env[i] = c[i].mod();
             }
 
             double data[] = new double[WINLEN];
