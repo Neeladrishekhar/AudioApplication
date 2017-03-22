@@ -9,7 +9,7 @@ import java.lang.Math.*;
 
 public class FrameRead {
 	static final double PI = 3.1415926536;
-	
+
 	public static int bitReverse(int x, int log2n){
 		int n = 0;
 		int mask = 0x1;
@@ -28,6 +28,9 @@ public class FrameRead {
 
 		for (int i=0; i < n; ++i) {
 			b[bitReverse(i, log2n)] = a[i];
+//			if (bitReverse(i, log2n) == 2) {
+//				System.out.println(i);
+//			}
 		}
 		
 	 	ComplexNumber sign;
@@ -40,31 +43,36 @@ public class FrameRead {
 			
 			//verify
 			ComplexNumber w = new ComplexNumber(1, 0);
-			ComplexNumber copy = new ComplexNumber(sign.getRe(), sign.getIm());// sign
-			copy.multiply(J);
-			copy.multiply(new ComplexNumber(PI/m2, 0));
-			ComplexNumber copy2 = new ComplexNumber(Math.exp(1.0), 0);
-			copy2.exp(copy);
-	
-			ComplexNumber wm = new ComplexNumber(copy2.getRe(), copy2.getIm());// copy2;
+//			ComplexNumber copy = new ComplexNumber(sign.getRe(), sign.getIm());// sign
+//			copy.multiply(J);
+//			copy.multiply(new ComplexNumber(PI/m2, 0));
+//			ComplexNumber copy2 = new ComplexNumber(Math.exp(1.0), 0);
+//			copy2.exp(copy);
+
+//			ComplexNumber wm = new ComplexNumber(copy2.getRe(), copy2.getIm());// copy2;
+			ComplexNumber wm = ComplexNumber.exp(ComplexNumber.multiply(ComplexNumber.multiply(sign, J), new ComplexNumber(PI/m2, 0) ));
 
 			//			ComplexNumber wm = exp(sign.multiply(J).multiply(PI / m2));
 			
 			for (int j=0; j < m2; ++j){
 				for (int k=j; k < n; k += m){
 					
-					ComplexNumber t = new ComplexNumber(w.getRe(), w.getIm());// w;
-					t.multiply(b[k+m2]);
+//					ComplexNumber t = new ComplexNumber(w.getRe(), w.getIm());// w;
+//					t.multiply(b[k+m2]);
+					ComplexNumber t = ComplexNumber.multiply(w, b[k + m2]);
 					//complex t = w * b[k + m2];
 					
-					ComplexNumber u = new ComplexNumber(b[k].getRe(), b[k].getIm());// b[k];
+					ComplexNumber u = new ComplexNumber();
+					u.set(b[k]); // b[k];
 					//complex u = b[k];
 					
-					b[k].add(t);
+//					b[k].add(t);
+					b[k] = ComplexNumber.add(u, t);
 					//b[k] = u + t;
 					
-					b[k+m2] = u;
-					u.subtract(t);
+//					b[k+m2] = u;
+//					u.subtract(t);
+					b[k + m2] = ComplexNumber.subtract(u, t);
 					//b[k + m2] = u - t;
 					
 				}
@@ -86,10 +94,10 @@ public class FrameRead {
 		
 		int n = 1 << log2n;
 		fft(a,b,log2n,false);
-		
+
 		ComplexNumber mult2 = new ComplexNumber(2,0); 
 		int nhalf = n>>1;
-		
+
 		//Taking only one sideband
 		for(int i=1;i<nhalf;i++){
 			b[i].multiply(mult2);
