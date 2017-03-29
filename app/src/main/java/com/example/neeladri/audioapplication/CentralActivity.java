@@ -7,6 +7,7 @@ import android.media.AudioManager;
 import android.media.AudioRecord;
 import android.media.AudioTrack;
 import android.media.MediaRecorder.AudioSource;
+import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -36,9 +37,7 @@ public class CentralActivity extends AppCompatActivity {
     private boolean isRecording = false;
 
     private static final int BytesPerElement = 2;
-//    private ArrayList<short[]> recordedData = new ArrayList<>();
     private ArrayList<Short> recordedData = new ArrayList<>();
-//    private int indexRec = 0;
 
     private static final int PLAYER_CHANNELS = AudioFormat.CHANNEL_OUT_MONO;
     private static final int PLAYER_BUFFER_SIZE = AudioTrack.getMinBufferSize(SAMPLE_RATE,
@@ -46,10 +45,10 @@ public class CentralActivity extends AppCompatActivity {
     private AudioTrack player = null;
     private Thread playingThread = null;
     private boolean isPlaying = false;
-
+// COMMENTED BY SHREYANSH TODO
 //    private GraphView graph = null;
-    private LineGraphSeries<DataPoint> graphData = null;
-    private int displaySeconds = 50;
+//    private LineGraphSeries<DataPoint> graphData = null;
+//    private int displaySeconds = 50;
 
     private View.OnClickListener btnClick = new View.OnClickListener(){
         @Override
@@ -73,7 +72,7 @@ public class CentralActivity extends AppCompatActivity {
 
     int numtaps = 121;	//Number of FIR taps for Hamming window
     double fir[] = new double[numtaps];	//FIR LPF using Hamming window with cutoff freq = 50Hz
-    char decimate = 100;		//decimation by a factor of 10
+    char decimate = 50;		//decimation by a factor of 10
     int samp_rate = SAMPLE_RATE/decimate;	//sampling rate after downsampling
     int window_time_ms = 1500;		// For window length of 1500ms, set window_time_ms to 30
     int WINSIZE = (int) Math.ceil((SAMPLE_RATE)*(window_time_ms)*0.001);	// Round WINSIZE(samples) if WINSIZE is not an integer
@@ -115,14 +114,12 @@ public class CentralActivity extends AppCompatActivity {
 
         //COMMENTED BY SHREYANSH TODO
 /*        GraphView graph = (GraphView) findViewById(R.id.graph);
-        *//* the place where we add data *//*
         graphData = new LineGraphSeries<>();
-        *//* attaching the series to the graph *//*
         graph.addSeries(graphData);
 
         graph.getViewport().setXAxisBoundsManual(true);
         graph.getViewport().setMinX(0);
-//        graph.getViewport().setMaxX(1000);
+        graph.getViewport().setMaxX(1000);
         graph.getViewport().setMaxX(displaySeconds);
         graph.getViewport().setYAxisBoundsManual(true);
         graph.getViewport().setMinY(120);
@@ -132,11 +129,13 @@ public class CentralActivity extends AppCompatActivity {
         Toast.makeText(getApplicationContext(), String.valueOf(BUFFER_SIZE), Toast.LENGTH_LONG).show();
     }
 
+    private int indexPlot = 0;
+
     @Override
     protected void onResume() {
         super.onResume();
         /* we are going to simulate real time with thread that appends data to the graph */
-        new Thread(new Runnable() {
+        /*new Thread(new Runnable() {
             @Override
             public void run() {
                 while (true) {
@@ -144,7 +143,7 @@ public class CentralActivity extends AppCompatActivity {
                         @Override
                         public void run() {
                             if (isRecording) {   // to plot only when recording for the time being
-                                 addDataToGraph();
+                                addDataToGraph();
                             }
                         }
                     });
@@ -156,44 +155,22 @@ public class CentralActivity extends AppCompatActivity {
 
                 }
             }
-        }).start();
+        }).start();*/
     }
-
-    /* adding datapoint to the graph */
-//    private double lastX = 0;
     List<Double> fhr=new ArrayList<>(); // we need this variable globally as it is used by the function again and again
 
-    private int indexPlot = 0;
+
     private void addDataToGraph() {
-        // here we add new data to the graph and show only a max of 10 datapoints to the viewport while scrolling to end
-
         if (indexPlot+WINSIZE > recordedData.size()) { return; }
-        //////////////////////////////////////////////////////////////////////////////
-        //Code translation requirements
-        int hop_time_ms = 200;
-        int graphFrame = displaySeconds * 1000 / hop_time_ms;
 
-        // Convert time specifications to samples
+        int hop_time_ms = 200;
+        //COMMENTED BY SHREYANSH TODO
+        //int graphFrame = displaySeconds * 1000 / hop_time_ms;
+
         int HOPSIZE = (int) Math.ceil((SAMPLE_RATE)*(hop_time_ms)*0.001);	// Round HOPSIZE(samples) if HOPSIZE is not an integer
 
-        //can be used to test the timing and real time audio processing and stability*/
-//        graphData.appendData(new DataPoint(0.001*(window_time_ms + (hop_time_ms*(indexPlot/HOPSIZE))), Math.sin(indexPlot/HOPSIZE)), true, graphFrame);
-//        indexPlot += HOPSIZE;
-//        return;
-
         int WINLEN = WINSIZE/decimate;	//parameters in decimated samples
-//        int HOPLEN = HOPSIZE/decimate;
         double databuff[] = new double[WINSIZE];				// buffer to store downsampled signal
-
-        //short int sample_start,numb_samples;	// Variables for reading samples that fall within window for 1st frame
-//        float hop_time = 0;			// Hop time for printing in output file
-
-//        for (int j = 0;j<WINSIZE ; j++)
-//        {
-//            buff16[j] = 0;
-//        }
-
-        //parameters for ACF
 
         int acf_jump = 10;		//difference between lags for which acf is calculated
         int min_fhr = 60;	// Minimum and maximum FHR in beats per minute (bpm)
@@ -201,28 +178,13 @@ public class CentralActivity extends AppCompatActivity {
         int lag_min = (int) Math.floor(samp_rate*60.0/max_fhr);
         int lag_max = (int) Math.floor(samp_rate*60.0/min_fhr);
         int acf_len = (int) Math.ceil(1.0*(lag_max-lag_min)/acf_jump);	//length of ACF valarray
-        //vector<double> fhr;
-//        int count = 0;						// For counting number of frames in wave file.
 
-
-        // --------------- Converting time specifications to sample end-------------------------------------- //
-
-
-        // Start reading file frame by frame //
-//        while(hop_time<50) // we do not need the while loop as this function is called again and again
-//        {
-//          take input buffer of length window size
-        // input buff 16
         for (int i = 0; i < WINSIZE; i++) {
             buff16[i] = recordedData.get(indexPlot + i);
         }
 
         downsample(buff16, WINSIZE, decimate, databuff);
 
-        //calculating envelope of signal
-
-        //typedef complex<double> cx;
-//        int log2n =(int) Math.ceil(Math.log(WINLEN)/Math.log(WINLEN));
         int log2n = (int) Math.ceil(Math.log(WINLEN) / Math.log(2));
         int n = 1 << log2n;
         ComplexNumber a[] = new ComplexNumber[n];
@@ -238,20 +200,12 @@ public class CentralActivity extends AppCompatActivity {
         hilbert(a, b, c, log2n);
         double env[] = new double[WINLEN];
         for (int i = 0; i < WINLEN; i++) {
-//                if (i >= n) {
-//                    env[i] = 0.0;
-//                } else {
-//                    env[i] = c[i].mod();
-//                }
             env[i] = c[i].mod();
         }
 
         double data[] = new double[WINLEN];
 
-        //Filtering envelope using the previously defined FIR LPF
         for (int i = 0; i < WINLEN; i++) {
-//            data[i] = 0.0;
-
             if (i < numtaps) {
                 for (int j = i; j >= 0 && j <= i; j--) {
                     data[i] = data[i] + env[j] * fir[i - j];
@@ -264,13 +218,11 @@ public class CentralActivity extends AppCompatActivity {
 
         }
 
-        // Calculating norm
         double norm = 0.0;
         for (int i = 0; i < WINLEN; i++) {
             norm = norm + data[i] * data[i];
         }
 
-        //Computing autocorrelation
         double acf[] = new double[acf_len];
         double acfval;
 
@@ -282,7 +234,6 @@ public class CentralActivity extends AppCompatActivity {
             acf[(i - lag_min) / acf_jump] = acfval / norm;        //assign this correctly*
         }
 
-        //finging position of max ACF value
         int maxpos = 0;
         for (int i = 1; i < acf_len; i++) {
             if (acf[i] > acf[maxpos]) {
@@ -290,11 +241,8 @@ public class CentralActivity extends AppCompatActivity {
             }
         }
 
-        // FILE * acffile = fopen("ACF.txt","wb");		// Create output file in write mode
         int lagmax = lag_min + maxpos * acf_jump;
         double curr_rate = samp_rate * 60.0 / lagmax;
-
-//        hop_time = hop_time + (float) (hop_time_ms * 0.001); // this is kind of useless because we do not have a while loop any more
 
         System.out.println("Corr lag: " + lagmax + " at hop time: " + 0.001*(window_time_ms + (hop_time_ms*(indexPlot/HOPSIZE))));
         double timeNow = 0.001*(window_time_ms + (hop_time_ms*(indexPlot/HOPSIZE)));
@@ -304,38 +252,13 @@ public class CentralActivity extends AppCompatActivity {
 
             System.out.println("Rate: " + curr_rate);
 
-//                fprintf (outfile,"%.03f	%.02f \n", hop_time, curr_rate);	// Ouput file format: Time-Stamp(sec)   FHR Value
-            // Example          : 0.01		1234
-            // add data to graph
             //COMMENTED BY SHREYANSH TODO
             //graphData.appendData(new DataPoint(timeNow, curr_rate), (timeNow > displaySeconds), graphFrame);
             drawView.appendPoint((float) timeNow*10.0f,(float) curr_rate);
         }
-//        graphData.appendData(new DataPoint(timeNow, curr_rate), (timeNow > displaySeconds), graphFrame);
-
-        //
-        // Avoiding to create the ACF file
-        // may need to implement code in this part for plotting or storing acf graph data
-        //
-
-        //Avoided
-        //cout<<"Corr lag: "<<lagmax<<" at hop time: "<<hop_time<<endl;
-
-//        count++;
-        // Avoided printing of final count should be the number of frames in the input file //
 
         indexPlot += HOPSIZE;
     }
-
-    //
-//    @Override
-//    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-//        switch (requestCode) {
-//            case MY_PERMISSIONS_REQUEST_RECORD_AUDIO: {
-//
-//            }
-//        }
-//    }
 
     private void setButtonHandlers() {
         (findViewById(R.id.btnStart)).setOnClickListener(btnClick);
@@ -350,67 +273,14 @@ public class CentralActivity extends AppCompatActivity {
         findViewById(R.id.btnPlay).setEnabled(!isPlaying);
         findViewById(R.id.btnPause).setEnabled(isPlaying);
     }
-//
-//    private AudioRecord getAudioRecorder() {
-//        for (int rate : new int[] { 8000, 11025, 22050, 44100 } ) {
-//            for (int format : new int[] {AudioFormat.ENCODING_PCM_8BIT, AudioFormat.ENCODING_PCM_16BIT}) {
-//                for (int chan : new int[] {AudioFormat.CHANNEL_IN_MONO, AudioFormat.CHANNEL_IN_STEREO}) {
-//                    try {
-//                        System.out.println("Attempting rate " + rate + "Hz, bits: " + format + ", channel: " + chan);
-//                        int bufferSize = AudioRecord.getMinBufferSize(rate, chan, format);
-//                        if (bufferSize != AudioRecord.ERROR_BAD_VALUE) {
-//                            // check if we can instantiate and have a success
-//
-//                            if (recorder != null) {
-//                                recorder.release();
-//                                recorder = null;
-//                            }
-//                            recorder = new AudioRecord(AudioSource.DEFAULT, rate, chan, format, bufferSize);
-//
-//                            if (recorder.getState() == AudioRecord.STATE_INITIALIZED) {
-//                                BUFFER_SIZE = bufferSize;
-//                                return recorder;
-//                            }
-//                        }
-//                    } catch (Exception e) {
-//                        System.out.println(rate + "Exception, keep trying." + e);
-//                    }
-//                }
-//            }
-//        }
-//        return null;
-//    }
 
     private void startRecord() {
 
-        // setting some graph specific variables
-//        graphFrame = Integer.parseInt(((EditText) findViewById(R.id.frameNum)).getText().toString());
-//        graph.getViewport().setMaxX(graphFrame);
-        //graphData.resetData(new DataPoint[0]);
         indexPlot = 0;
         recordedData.clear();
-//        if (recorder != null) {
-//            recorder.release();
-//            recorder = null;
-//        }
-
-//        recorder = getAudioRecorder();
         recorder = new AudioRecord(AudioSource.MIC,
                 SAMPLE_RATE, RECORDER_CHANNELS,
-                AUDIO_ENCODING, BUFFER_SIZE);    // we will create a short[] and 1 short is 16bit = 2 * 8bit(1 byte)
-//                AUDIO_ENCODING, 100000);    // we will create a short[] and 1 short is 16bit = 2 * 8bit(1 byte)
-
-        /*** For debugging purposes
-        if (recorder == null) {
-            Toast.makeText(getApplicationContext(), "recorder is still null", Toast.LENGTH_LONG).show();
-            return;
-        } else if (recorder.getState() == AudioRecord.STATE_INITIALIZED) {
-
-        } else {
-            Toast.makeText(getApplicationContext(), "recorder is uninitialized", Toast.LENGTH_LONG).show();
-            return;
-        }
-        */
+                AUDIO_ENCODING, BUFFER_SIZE);
         recorder.startRecording();
         isRecording = true;
         enableButtons();
@@ -424,7 +294,6 @@ public class CentralActivity extends AppCompatActivity {
     }
 
     private void stopRecord() {
-        // stops recording audio
         if (recorder != null) {
             isRecording = false;
             enableButtons();
@@ -435,24 +304,32 @@ public class CentralActivity extends AppCompatActivity {
         }
     }
 
+    Runnable runnable = new Runnable() {
+        @Override
+        public void run() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    addDataToGraph();
+                }
+            });
+        }
+    };
+    Thread mThread;
     private void writeAudioDataSomewhere() {
-
         short[] sData = new short[BUFFER_SIZE / BytesPerElement];
-        // int indexRec = 0;
         while (isRecording) {
-            // read the data to the global array
             int read = recorder.read(sData, 0, sData.length);
-//            indexRec += read;
 
-            // this part of the code should not be code intensive
-            // as here we need to be able to capture the next input for read
-            // while not missing an intermediate read which will lead to gaps
             for (int i = 0 ; i < read ; i++) {
                 recordedData.add(sData[i]);
+                if(indexPlot + WINSIZE <= recordedData.size()){
+                    mThread = new Thread(runnable);
+                    mThread.start();
+/*                    while(mThread.getState()!=Thread.State.TERMINATED){
+                    }*/
+                }
             }
-//            short[] index = new short[] {(short) read};
-//            recordedData.add(index);
-//            recordedData.add(sData);
         }
     }
 
