@@ -14,7 +14,6 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Toast;
 
-import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
 
@@ -74,11 +73,14 @@ public class CentralActivity extends AppCompatActivity {
 
     int numtaps = 121;	//Number of FIR taps for Hamming window
     double fir[] = new double[numtaps];	//FIR LPF using Hamming window with cutoff freq = 50Hz
-    char decimate = 80;		//decimation by a factor of 10
+    char decimate = 100;		//decimation by a factor of 10
     int samp_rate = SAMPLE_RATE/decimate;	//sampling rate after downsampling
     int window_time_ms = 1500;		// For window length of 1500ms, set window_time_ms to 30
     int WINSIZE = (int) Math.ceil((SAMPLE_RATE)*(window_time_ms)*0.001);	// Round WINSIZE(samples) if WINSIZE is not an integer
     int buff16[] = new int[WINSIZE];			// Defining buffer for holding samples that fall within the window.
+
+
+    DrawView drawView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,8 +94,12 @@ public class CentralActivity extends AppCompatActivity {
                     1);
         }
 
+        drawView = (DrawView) findViewById(R.id.graph);
+
         setButtonHandlers();
         enableButtons();
+
+
 
         // Designing filter to remove noise with frequency cut-off = 50Hz
         int middle = (numtaps-1)/2;
@@ -107,10 +113,11 @@ public class CentralActivity extends AppCompatActivity {
 //            System.out.println(i + " " + fir[i]);
         }
 
-        GraphView graph = (GraphView) findViewById(R.id.graph);
-        /* the place where we add data */
+        //COMMENTED BY SHREYANSH TODO
+/*        GraphView graph = (GraphView) findViewById(R.id.graph);
+        *//* the place where we add data *//*
         graphData = new LineGraphSeries<>();
-        /* attaching the series to the graph */
+        *//* attaching the series to the graph *//*
         graph.addSeries(graphData);
 
         graph.getViewport().setXAxisBoundsManual(true);
@@ -120,7 +127,7 @@ public class CentralActivity extends AppCompatActivity {
         graph.getViewport().setYAxisBoundsManual(true);
         graph.getViewport().setMinY(120);
         graph.getViewport().setMaxY(170);
-        graph.getViewport().setScrollable(true);
+        graph.getViewport().setScrollable(true);*/
 
         Toast.makeText(getApplicationContext(), String.valueOf(BUFFER_SIZE), Toast.LENGTH_LONG).show();
     }
@@ -300,7 +307,9 @@ public class CentralActivity extends AppCompatActivity {
 //                fprintf (outfile,"%.03f	%.02f \n", hop_time, curr_rate);	// Ouput file format: Time-Stamp(sec)   FHR Value
             // Example          : 0.01		1234
             // add data to graph
-            graphData.appendData(new DataPoint(timeNow, curr_rate), (timeNow > displaySeconds), graphFrame);
+            //COMMENTED BY SHREYANSH TODO
+            //graphData.appendData(new DataPoint(timeNow, curr_rate), (timeNow > displaySeconds), graphFrame);
+            drawView.appendPoint((float) timeNow*10.0f,(float) curr_rate);
         }
 //        graphData.appendData(new DataPoint(timeNow, curr_rate), (timeNow > displaySeconds), graphFrame);
 
@@ -377,7 +386,7 @@ public class CentralActivity extends AppCompatActivity {
         // setting some graph specific variables
 //        graphFrame = Integer.parseInt(((EditText) findViewById(R.id.frameNum)).getText().toString());
 //        graph.getViewport().setMaxX(graphFrame);
-        graphData.resetData(new DataPoint[0]);
+        //graphData.resetData(new DataPoint[0]);
         indexPlot = 0;
         recordedData.clear();
 //        if (recorder != null) {
@@ -423,8 +432,6 @@ public class CentralActivity extends AppCompatActivity {
             recorder.release();
             recorder = null;
             recordingThread = null;
-
-//            System.out.println("Short Array captured is " + recordedData.toString());
         }
     }
 

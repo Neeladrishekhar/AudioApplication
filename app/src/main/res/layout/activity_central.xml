@@ -23,7 +23,8 @@
         android:id="@+id/btnStart"
         android:background="@android:color/holo_red_light" />
 
-    <com.jjoe64.graphview.GraphView
+
+        <com.jjoe64.graphview.GraphView
         android:layout_width="match_parent"
         android:layout_height="200dip"
         android:id="@+id/graph"
@@ -31,6 +32,15 @@
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
         android:layout_marginTop="35dp" />
+
+<!--    <com.example.neeladri.audioapplication.DrawView
+        android:layout_width="match_parent"
+        android:layout_height="300dip"
+        android:id="@+id/graph"
+        android:layout_below="@+id/btnStart"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="35dp" />-->
 
     <Button
         android:text="@string/play"
