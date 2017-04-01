@@ -1,16 +1,19 @@
 package com.example.neeladri.audioapplication;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioRecord;
 import android.media.AudioTrack;
 import android.media.MediaRecorder.AudioSource;
+import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
@@ -18,6 +21,14 @@ import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
 
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,6 +36,9 @@ import static com.example.neeladri.audioapplication.FrameRead.downsample;
 import static com.example.neeladri.audioapplication.FrameRead.hilbert;
 
 public class CentralActivity extends AppCompatActivity {
+
+    private static final boolean inputFromFile = false;
+    OutputStreamWriter outputStreamWriter;
 
     private static final int SAMPLE_RATE = 44100;
     private static final int AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
@@ -51,6 +65,7 @@ public class CentralActivity extends AppCompatActivity {
 //    private GraphView graph = null;
     private LineGraphSeries<DataPoint> graphData = null;
     private int displaySeconds = 50;
+    private double lastIndex = 0;
 
     private View.OnClickListener btnClick = new View.OnClickListener(){
         @Override
@@ -74,11 +89,15 @@ public class CentralActivity extends AppCompatActivity {
 
     int numtaps = 121;	//Number of FIR taps for Hamming window
     double fir[] = new double[numtaps];	//FIR LPF using Hamming window with cutoff freq = 50Hz
-    char decimate = 80;		//decimation by a factor of 10
+    char decimate = 10;		//decimation by a factor of 10
     int samp_rate = SAMPLE_RATE/decimate;	//sampling rate after downsampling
     int window_time_ms = 1500;		// For window length of 1500ms, set window_time_ms to 30
+    int hop_time_ms = 200;
     int WINSIZE = (int) Math.ceil((SAMPLE_RATE)*(window_time_ms)*0.001);	// Round WINSIZE(samples) if WINSIZE is not an integer
+    int HOPSIZE = (int) Math.ceil((SAMPLE_RATE)*(hop_time_ms)*0.001);	// Round HOPSIZE(samples) if HOPSIZE is not an integer
     int buff16[] = new int[WINSIZE];			// Defining buffer for holding samples that fall within the window.
+
+//    public CentralActivity() throws FileNotFoundException { }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,6 +108,20 @@ public class CentralActivity extends AppCompatActivity {
                 Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(CentralActivity.this,
                     new String[]{Manifest.permission.RECORD_AUDIO},
+                    1);
+        }
+
+        if (ContextCompat.checkSelfPermission(CentralActivity.this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(CentralActivity.this,
+                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    1);
+        }
+
+        if (ContextCompat.checkSelfPermission(CentralActivity.this,
+                Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(CentralActivity.this,
+                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
                     1);
         }
 
@@ -117,61 +150,77 @@ public class CentralActivity extends AppCompatActivity {
         graph.getViewport().setMinX(0);
 //        graph.getViewport().setMaxX(1000);
         graph.getViewport().setMaxX(displaySeconds);
-        graph.getViewport().setYAxisBoundsManual(true);
-        graph.getViewport().setMinY(120);
-        graph.getViewport().setMaxY(170);
+        if (inputFromFile) {
+            graph.getViewport().setYAxisBoundsManual(true);
+            graph.getViewport().setMinY(30);
+            graph.getViewport().setMaxY(120);
+            window_time_ms = 4000; hop_time_ms = 60;
+        }
         graph.getViewport().setScrollable(true);
 
-        Toast.makeText(getApplicationContext(), String.valueOf(BUFFER_SIZE), Toast.LENGTH_LONG).show();
+//        Toast.makeText(getApplicationContext(), String.valueOf(BUFFER_SIZE), Toast.LENGTH_LONG).show();
+
+        //// Only for testing purpose where we want to verify with
+//        if (inputFromFile) {
+
+//            indexPlot = 0;
+//            while (indexPlot+WINSIZE <= recordedData.size()) {
+//                addDataToGraph(indexPlot);
+//                indexPlot += HOPSIZE;
+//            }
+//            try {
+//                outputStreamWriter.close();
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//        }
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        /* we are going to simulate real time with thread that appends data to the graph */
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (isRecording) {   // to plot only when recording for the time being
-                                 addDataToGraph();
-                            }
-                        }
-                    });
-                    try {
-                        Thread.sleep(50);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-
-                }
-            }
-        }).start();
-    }
+//    @Override
+//    protected void onResume() {
+//        super.onResume();
+//        // we are going to simulate real time with thread that appends data to the graph
+//        new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                while (true) {
+//                    runOnUiThread(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            if (isRecording) {   // to plot only when recording for the time being
+//                                 addDataToGraph();
+//                            }
+//                        }
+//                    });
+//                    try {
+//                        Thread.sleep(50);
+//                    } catch (InterruptedException e) {
+//                        e.printStackTrace();
+//                    }
+//
+//                }
+//            }
+//        }).start();
+//    }
 
     /* adding datapoint to the graph */
 //    private double lastX = 0;
     List<Double> fhr=new ArrayList<>(); // we need this variable globally as it is used by the function again and again
 
     private int indexPlot = 0;
-    private void addDataToGraph() {
+    private void addDataToGraph(int index) {
         // here we add new data to the graph and show only a max of 10 datapoints to the viewport while scrolling to end
 
-        if (indexPlot+WINSIZE > recordedData.size()) { return; }
+        if (index+WINSIZE > recordedData.size()) { return; }
         //////////////////////////////////////////////////////////////////////////////
         //Code translation requirements
-        int hop_time_ms = 200;
         int graphFrame = displaySeconds * 1000 / hop_time_ms;
 
         // Convert time specifications to samples
-        int HOPSIZE = (int) Math.ceil((SAMPLE_RATE)*(hop_time_ms)*0.001);	// Round HOPSIZE(samples) if HOPSIZE is not an integer
 
         //can be used to test the timing and real time audio processing and stability*/
-//        graphData.appendData(new DataPoint(0.001*(window_time_ms + (hop_time_ms*(indexPlot/HOPSIZE))), Math.sin(indexPlot/HOPSIZE)), true, graphFrame);
-//        indexPlot += HOPSIZE;
+//        graphData.appendData(new DataPoint(0.001*(window_time_ms + (hop_time_ms*(index/HOPSIZE))), Math.sin(index/HOPSIZE)), true, graphFrame);
+//        index += HOPSIZE;
 //        return;
 
         int WINLEN = WINSIZE/decimate;	//parameters in decimated samples
@@ -207,7 +256,7 @@ public class CentralActivity extends AppCompatActivity {
 //          take input buffer of length window size
         // input buff 16
         for (int i = 0; i < WINSIZE; i++) {
-            buff16[i] = recordedData.get(indexPlot + i);
+            buff16[i] = recordedData.get(index + i);
         }
 
         downsample(buff16, WINSIZE, decimate, databuff);
@@ -231,11 +280,6 @@ public class CentralActivity extends AppCompatActivity {
         hilbert(a, b, c, log2n);
         double env[] = new double[WINLEN];
         for (int i = 0; i < WINLEN; i++) {
-//                if (i >= n) {
-//                    env[i] = 0.0;
-//                } else {
-//                    env[i] = c[i].mod();
-//                }
             env[i] = c[i].mod();
         }
 
@@ -289,10 +333,12 @@ public class CentralActivity extends AppCompatActivity {
 
 //        hop_time = hop_time + (float) (hop_time_ms * 0.001); // this is kind of useless because we do not have a while loop any more
 
-        System.out.println("Corr lag: " + lagmax + " at hop time: " + 0.001*(window_time_ms + (hop_time_ms*(indexPlot/HOPSIZE))));
-        double timeNow = 0.001*(window_time_ms + (hop_time_ms*(indexPlot/HOPSIZE)));
-
-        if ((fhr.isEmpty() || curr_rate - fhr.get(fhr.size() - 1) <= 50) && curr_rate > 100) {
+        double timeNow = 0.001*(window_time_ms + (hop_time_ms*(index/HOPSIZE)));
+        System.out.println("Corr lag: " + lagmax + " at hop time: " + timeNow);
+//        if (lastIndex < timeNow) {  // this might skip a few calculations if last one is done
+//            graphData.appendData(new DataPoint(timeNow, curr_rate), (timeNow > displaySeconds), graphFrame); lastIndex = timeNow;
+//        }
+        if ((fhr.isEmpty() || curr_rate - fhr.get(fhr.size() - 1) <= 50)) {
             fhr.add(curr_rate);
 
             System.out.println("Rate: " + curr_rate);
@@ -300,7 +346,18 @@ public class CentralActivity extends AppCompatActivity {
 //                fprintf (outfile,"%.03f	%.02f \n", hop_time, curr_rate);	// Ouput file format: Time-Stamp(sec)   FHR Value
             // Example          : 0.01		1234
             // add data to graph
-            graphData.appendData(new DataPoint(timeNow, curr_rate), (timeNow > displaySeconds), graphFrame);
+//            graphData.appendData(new DataPoint(timeNow, curr_rate), (timeNow > displaySeconds), graphFrame);
+            if (lastIndex < timeNow) {
+                graphData.appendData(new DataPoint(timeNow, curr_rate), (timeNow > displaySeconds), graphFrame); lastIndex = timeNow;
+            }
+            if (inputFromFile) {
+                try {
+                    System.out.println("timeNow: " + timeNow + ", curr_rate: " + curr_rate);
+                    outputStreamWriter.write(timeNow + "," + curr_rate + "\n");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
 //        graphData.appendData(new DataPoint(timeNow, curr_rate), (timeNow > displaySeconds), graphFrame);
 
@@ -315,18 +372,8 @@ public class CentralActivity extends AppCompatActivity {
 //        count++;
         // Avoided printing of final count should be the number of frames in the input file //
 
-        indexPlot += HOPSIZE;
+//        index += HOPSIZE;
     }
-
-    //
-//    @Override
-//    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-//        switch (requestCode) {
-//            case MY_PERMISSIONS_REQUEST_RECORD_AUDIO: {
-//
-//            }
-//        }
-//    }
 
     private void setButtonHandlers() {
         (findViewById(R.id.btnStart)).setOnClickListener(btnClick);
@@ -371,6 +418,45 @@ public class CentralActivity extends AppCompatActivity {
 //        }
 //        return null;
 //    }
+    private void readAudiofile() throws FileNotFoundException {
+
+        //int minBufferSize = AudioTrack.getMinBufferSize(8000, AudioFormat.CHANNEL_CONFIGURATION_MONO, AudioFormat.ENCODING_PCM_16BIT);
+        String filepath = Environment.getExternalStorageDirectory().getAbsolutePath();
+        Toast.makeText(getApplicationContext(), filepath, Toast.LENGTH_LONG).show();
+        System.out.println(filepath);
+        System.out.println("audio fle read start");
+        try {
+            //AssetManager am = context.getAssets();
+            File srcFile = new File(filepath + File.separator + "Audio" + File.separator + "fhr_rec3.wav" );
+
+            if (srcFile.exists()) {
+                System.out.println("file found successfully");
+            } else {
+                System.out.println("file not found");
+            }
+            // final File srcFile = new File(Environment.getExternalStorageDirectory()
+            //        .getAbsolutePath(),"fhr_rec3.wav");
+            FileInputStream in = new FileInputStream(srcFile);
+            //ObjectOutputStream output =  new ObjectOutputStream(new FileOutputStream("gilad-OutPut.bin"));
+            //short[] aData = new short[BUFFER_SIZE / BytesPerElement];
+            System.out.println((int) srcFile.length());
+            byte[] buf = new byte[(int) srcFile.length()];
+            short[] shortArr = new short[buf.length / 2];
+            in.read(buf);
+            for (int i = 0; i < buf.length / 2; i++) {
+                //output.writeShort( (short)( ( buf[i*2] & 0xff )|( buf[i*2 + 1] << 8 ) ) );
+                shortArr[i] = ((short) ((buf[i * 2] & 0xff) | (buf[i * 2 + 1] << 8)));
+                recordedData.add(shortArr[i]);
+            }
+
+            in.close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("audio file read complete");
+    }
 
     private void startRecord() {
 
@@ -378,8 +464,51 @@ public class CentralActivity extends AppCompatActivity {
 //        graphFrame = Integer.parseInt(((EditText) findViewById(R.id.frameNum)).getText().toString());
 //        graph.getViewport().setMaxX(graphFrame);
         graphData.resetData(new DataPoint[0]);
-        indexPlot = 0;
+        indexPlot = 0; lastIndex = 0;
         recordedData.clear();
+
+        if (inputFromFile) {
+            try {   // read the audio file to plot
+                readAudiofile();
+                String filepath = Environment.getExternalStorageDirectory().getAbsolutePath();
+                File writefile = new File(filepath+File.separator+"Audio"+File.separator+"mynewfile.txt");
+                FileOutputStream out = new FileOutputStream(writefile);
+                outputStreamWriter = new OutputStreamWriter(out);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+            isRecording = true; // virtual recording just for testing purposes
+            enableButtons();
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+//                    while (indexPlot <= 100 * HOPSIZE) {
+                    while (indexPlot+WINSIZE <= recordedData.size()) {
+                        final int ind = indexPlot;
+//                        new Thread(new Runnable() {
+//                            @Override
+//                            public void run() {
+//                            }
+//                        }).start();
+                        addDataToGraph(ind);
+                        indexPlot += HOPSIZE;
+                        try {
+                            Thread.sleep(hop_time_ms);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    try {
+                        outputStreamWriter.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+//                    stopRecord();
+                    isRecording = false;
+                }
+            }).start();
+            return;
+        }
 //        if (recorder != null) {
 //            recorder.release();
 //            recorder = null;
@@ -416,13 +545,13 @@ public class CentralActivity extends AppCompatActivity {
 
     private void stopRecord() {
         // stops recording audio
+        isRecording = false;
+        enableButtons();
+        recordingThread = null;
         if (recorder != null) {
-            isRecording = false;
-            enableButtons();
             recorder.stop();
             recorder.release();
             recorder = null;
-            recordingThread = null;
 
 //            System.out.println("Short Array captured is " + recordedData.toString());
         }
@@ -442,6 +571,16 @@ public class CentralActivity extends AppCompatActivity {
             // while not missing an intermediate read which will lead to gaps
             for (int i = 0 ; i < read ; i++) {
                 recordedData.add(sData[i]);
+            }
+            if (indexPlot+WINSIZE <= recordedData.size()) {
+                final int ind = indexPlot;
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        addDataToGraph(ind);
+                    }
+                }).start();
+                indexPlot += HOPSIZE;
             }
 //            short[] index = new short[] {(short) read};
 //            recordedData.add(index);
@@ -486,7 +625,6 @@ public class CentralActivity extends AppCompatActivity {
         for (int i = 0 ; i < recordBuffer.length ; i++ ) {
             recordBuffer[i] = recordedData.get(i);
         }
-
 
         int played = 0;
         while (isPlaying && played < recordBuffer.length) {
