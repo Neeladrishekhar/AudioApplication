@@ -14,8 +14,10 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
+import android.content.Context;
 
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
@@ -30,6 +32,7 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,6 +40,17 @@ import static com.example.neeladri.audioapplication.FrameRead.downsample;
 import static com.example.neeladri.audioapplication.FrameRead.hilbert;
 
 public class CentralActivity extends AppCompatActivity {
+
+    //private final Context context = CentralActivity.this.getApplicationContext();
+    //private final File path = context.getFilesDir();
+    //public final File FILE = new File(path, "storagefile.txt");
+    //public final FileOutputStream stream = new FileOutputStream(FILE);
+    String filepath = Environment.getExternalStorageDirectory().getAbsolutePath();
+    File writefile = new File(filepath+"/mynewfile.txt");
+    FileOutputStream out = new FileOutputStream(writefile);
+    OutputStreamWriter outputStreamWriter = new OutputStreamWriter(out);
+
+
 
     private static final int SAMPLE_RATE = 44100;
     private static final int AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
@@ -69,16 +83,36 @@ public class CentralActivity extends AppCompatActivity {
         public void onClick(View v) {
             switch (v.getId()) {
                 case R.id.btnStart: {
-                    pauseRecord(); startRecord(); break;
+                    try {
+                        pauseRecord();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    startRecord(); break;
                 }
                 case R.id.btnStop: {
-                    stopRecord(); break;
+                    try {
+                        stopRecord();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    break;
                 }
                 case R.id.btnPlay: {
-                    stopRecord(); playRecord(); break;
+                    try {
+                        stopRecord();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    playRecord(); break;
                 }
                 case R.id.btnPause: {
-                    pauseRecord(); break;
+                    try {
+                        pauseRecord();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    break;
                 }
             }
         }
@@ -91,6 +125,9 @@ public class CentralActivity extends AppCompatActivity {
     int window_time_ms = 1500;		// For window length of 1500ms, set window_time_ms to 30
     int WINSIZE = (int) Math.ceil((SAMPLE_RATE)*(window_time_ms)*0.001);	// Round WINSIZE(samples) if WINSIZE is not an integer
     int buff16[] = new int[WINSIZE];			// Defining buffer for holding samples that fall within the window.
+
+    public CentralActivity() throws FileNotFoundException {
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -155,7 +192,11 @@ public class CentralActivity extends AppCompatActivity {
                         @Override
                         public void run() {
                             if (isRecording) {   // to plot only when recording for the time being
-                                 addDataToGraph();
+                                try {
+                                    addDataToGraph();
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
                             }
                         }
                     });
@@ -175,7 +216,7 @@ public class CentralActivity extends AppCompatActivity {
     List<Double> fhr=new ArrayList<>(); // we need this variable globally as it is used by the function again and again
 
     private int indexPlot = 0;
-    private void addDataToGraph() {
+    private void addDataToGraph() throws IOException {
         // here we add new data to the graph and show only a max of 10 datapoints to the viewport while scrolling to end
 
         if (indexPlot+WINSIZE > recordedData.size()) { return; }
@@ -310,6 +351,7 @@ public class CentralActivity extends AppCompatActivity {
         System.out.println("Corr lag: " + lagmax + " at hop time: " + 0.001*(window_time_ms + (hop_time_ms*(indexPlot/HOPSIZE))));
         double timeNow = 0.001*(window_time_ms + (hop_time_ms*(indexPlot/HOPSIZE)));
 
+        //FileOutputStream stream = new FileOutputStream(FILE);
         if ((fhr.isEmpty() || curr_rate - fhr.get(fhr.size() - 1) <= 50) && curr_rate > 100) {
             fhr.add(curr_rate);
 
@@ -319,6 +361,8 @@ public class CentralActivity extends AppCompatActivity {
             // Example          : 0.01		1234
             // add data to graph
             graphData.appendData(new DataPoint(timeNow, curr_rate), (timeNow > displaySeconds), graphFrame);
+            System.out.println("timeNow: "+timeNow+"curr_rate: "+curr_rate);
+            outputStreamWriter.write("timeNow: "+timeNow+" curr_rate: "+curr_rate+"\n");
         }
 //        graphData.appendData(new DataPoint(timeNow, curr_rate), (timeNow > displaySeconds), graphFrame);
 
@@ -334,6 +378,7 @@ public class CentralActivity extends AppCompatActivity {
         // Avoided printing of final count should be the number of frames in the input file //
 
         indexPlot += HOPSIZE;
+
     }
 
     //
@@ -460,6 +505,7 @@ public class CentralActivity extends AppCompatActivity {
         // setting some graph specific variables
 //        graphFrame = Integer.parseInt(((EditText) findViewById(R.id.frameNum)).getText().toString());
 //        graph.getViewport().setMaxX(graphFrame);
+
         graphData.resetData(new DataPoint[0]);
         indexPlot = 0;
         recordedData.clear();
@@ -497,8 +543,9 @@ public class CentralActivity extends AppCompatActivity {
         recordingThread.start();
     }
 
-    private void stopRecord() {
+    private void stopRecord() throws IOException {
         // stops recording audio
+        outputStreamWriter.close();
         if (recorder != null) {
             isRecording = false;
             enableButtons();
@@ -551,7 +598,7 @@ public class CentralActivity extends AppCompatActivity {
 
     }
 
-    private void pauseRecord() {
+    private void pauseRecord() throws IOException {
         // pauses the recorded audio
         if (player != null) {
             Toast.makeText(getApplicationContext(), String.valueOf(BUFFER_SIZE)+" "+String.valueOf(PLAYER_BUFFER_SIZE)+" "+String.valueOf(recordedData.size()), Toast.LENGTH_LONG).show();
@@ -562,6 +609,7 @@ public class CentralActivity extends AppCompatActivity {
             player = null;
             playingThread = null;
         }
+
     }
 
     private void playAudioSomehow() {
