@@ -2,11 +2,14 @@ package com.example.neeladri.audioapplication;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.content.res.AssetManager;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioRecord;
 import android.media.AudioTrack;
+import android.media.MediaExtractor;
 import android.media.MediaRecorder.AudioSource;
+import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -18,6 +21,15 @@ import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
 
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -123,6 +135,12 @@ public class CentralActivity extends AppCompatActivity {
         graph.getViewport().setScrollable(true);
 
         Toast.makeText(getApplicationContext(), String.valueOf(BUFFER_SIZE), Toast.LENGTH_LONG).show();
+
+        try {
+            readAudiofile();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -371,6 +389,71 @@ public class CentralActivity extends AppCompatActivity {
 //        }
 //        return null;
 //    }
+
+
+    private void readAudiofile() throws FileNotFoundException {
+
+
+        //int minBufferSize = AudioTrack.getMinBufferSize(8000, AudioFormat.CHANNEL_CONFIGURATION_MONO, AudioFormat.ENCODING_PCM_16BIT);
+        String filepath = Environment.getExternalStorageDirectory().getAbsolutePath();
+        System.out.println(filepath);
+        System.out.println("audio fle read start");
+        try {
+            //AssetManager am = context.getAssets();
+            File srcFile = new File(filepath+"/fhr_rec3.wav");
+           // final File srcFile = new File(Environment.getExternalStorageDirectory()
+            //        .getAbsolutePath(),"fhr_rec3.wav");
+            FileInputStream in = new FileInputStream(srcFile);
+            //ObjectOutputStream output =  new ObjectOutputStream(new FileOutputStream("gilad-OutPut.bin"));
+            //short[] aData = new short[BUFFER_SIZE / BytesPerElement];
+            System.out.println((int) srcFile.length());
+            byte[] buf = new byte[(int) srcFile.length()];
+            short[] shortArr = new short[buf.length/2];
+            in.read(buf);
+            for (int i = 0; i <buf.length/2 ; i++)
+            {
+                //output.writeShort( (short)( ( buf[i*2] & 0xff )|( buf[i*2 + 1] << 8 ) ) );
+                shortArr[i] = ( (short)( ( buf[i*2] & 0xff )|( buf[i*2 + 1] << 8 ) ) );
+                recordedData.add(shortArr[i]);
+            }
+
+            in.close();
+
+//            for (int i = 0 ; i < audioread ; i++) {
+//                recordedData.add(aData[i]);
+//            }
+
+        } catch (Exception e) {
+            System.err.println(e);
+        }
+
+        System.out.println("audio fle read complete");
+
+
+//        try {
+//            FileInputStream fin = new FileInputStream(filepath + "/fhr_rec3.wav");
+//            DataInputStream dis = new DataInputStream(fin);
+//
+//           // at.play();
+//            while((i = dis.read(aData, 0, aData.length)) > -1){
+//                at.write(s, 0, i);
+//
+//            }
+//            at.stop();
+//            at.release();
+//            dis.close();
+//            fin.close();
+//
+//        } catch (FileNotFoundException e) {
+//            // TODO
+//            e.printStackTrace();
+//        } catch (IOException e) {
+//            // TODO
+//            e.printStackTrace();
+//        }
+        //at.play();
+
+    }
 
     private void startRecord() {
 
