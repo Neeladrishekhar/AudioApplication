@@ -150,12 +150,12 @@ public class CentralActivity extends AppCompatActivity {
         graph.getViewport().setMinX(0);
 //        graph.getViewport().setMaxX(1000);
         graph.getViewport().setMaxX(displaySeconds);
-        if (inputFromFile) {
-            graph.getViewport().setYAxisBoundsManual(true);
-            graph.getViewport().setMinY(30);
-            graph.getViewport().setMaxY(120);
-            window_time_ms = 4000; hop_time_ms = 60;
-        }
+//        if (inputFromFile) {
+//            graph.getViewport().setYAxisBoundsManual(true);
+//            graph.getViewport().setMinY(50);
+//            graph.getViewport().setMaxY(150);
+//        }
+        window_time_ms = 500; hop_time_ms = 200;
         graph.getViewport().setScrollable(true);
 
 //        Toast.makeText(getApplicationContext(), String.valueOf(BUFFER_SIZE), Toast.LENGTH_LONG).show();
