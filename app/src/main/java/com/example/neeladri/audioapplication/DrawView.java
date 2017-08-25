@@ -1,6 +1,7 @@
 package com.example.neeladri.audioapplication;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -14,6 +15,8 @@ import java.util.Arrays;
 public class DrawView extends View {
     Paint paint ;
     Path path;
+    Bitmap cache;
+    float lastX, lastY;
 
     public DrawView(Context context){
         this(context, null);
@@ -34,8 +37,8 @@ public class DrawView extends View {
         paint.setColor(Color.RED);
         paint.setStrokeWidth(2);
 
-        path = new Path();
-        path.moveTo(0.0f, 0.0f);
+        lastX = 0.0f;
+        lastY = 0.0f;
     }
 
 
@@ -50,12 +53,25 @@ public class DrawView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        canvas.drawPath(path,paint);
+        if (cache != null)
+            canvas.drawBitmap(cache, 0, 0, paint);
     }
 
     public void appendPoint(float x, float y){
-        path.lineTo(x,y);
-        invalidate();
+        int w = getWidth();
+        int h = getHeight();
+        if (w == 0 || h == 0)
+            return;
+
+        if (cache == null) {
+            cache = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        }
+
+        Canvas canvas = new Canvas(cache);
+        canvas.drawLine(lastX, lastY, x, y, paint);
+        lastX = x;
+        lastY = y;
+        postInvalidate();
     }
 
 
